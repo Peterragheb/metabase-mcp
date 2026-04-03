@@ -2,6 +2,11 @@
   "name": "@imlewc/metabase-server",
   "version": "0.1.0",
   "description": "MCP server for interacting with Metabase - provides AI assistants with tools to query, create, and manage dashboards, cards, and databases",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:Peterragheb/metabase-mcp.git"
+  },
+  "homepage": "https://github.com/Peterragheb/metabase-mcp",
   "type": "module",
   "bin": {
     "metabase-server": "./build/index.js",
