@@ -4,16 +4,18 @@
   "description": "MCP server for interacting with Metabase - provides AI assistants with tools to query, create, and manage dashboards, cards, and databases",
   "type": "module",
   "bin": {
-    "metabase-server": "./build/index.js"
+    "metabase-server": "./build/index.js",
+    "metabase-server-http": "./build/http.js"
   },
   "files": [
     "build"
   ],
   "scripts": {
-    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\" && mkdir -p dist && cp build/*.js dist/",
+    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755'); require('fs').chmodSync('build/http.js', '755')\" && mkdir -p dist && cp build/*.js dist/",
     "prepare": "npm run build",
     "watch": "tsc --watch",
-    "inspector": "npx @modelcontextprotocol/inspector build/index.js"
+    "inspector": "npx @modelcontextprotocol/inspector build/index.js",
+    "start:http": "node build/http.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.2",
@@ -22,6 +24,7 @@
   },
   "devDependencies": {
     "@types/axios": "^0.14.4",
+    "@types/express": "^5.0.0",
     "@types/node": "^20.17.22",
     "typescript": "^5.3.3"
   }

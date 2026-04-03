@@ -60,6 +60,25 @@ export METABASE_PASSWORD=your_password
 ```
 You can set these environment variables in your shell profile or use a `.env` file with a package like `dotenv`.
 
+### Streamable HTTP (remote / tunnels)
+
+The default CLI (`metabase-server` → `build/index.js`) uses **stdio** for local MCP clients.
+
+For **remote** access (e.g. [MCP Inspector](https://github.com/modelcontextprotocol/inspector) with “Streamable HTTP”, Cloudflare Tunnel, Fly.io), run the HTTP transport:
+
+```bash
+npm run build
+npm run start:http
+# or: npx metabase-server-http
+```
+
+- **URL:** `http://<host>:<port>/mcp` (defaults: `0.0.0.0:8787/mcp`)
+- **Env:** `MCP_HTTP_HOST`, `MCP_HTTP_PORT`, `MCP_HTTP_PATH`, optional `MCP_HTTP_ALLOWED_HOSTS` (comma-separated `Host` allowlist; set to your tunnel hostname when the SDK warns about DNS rebinding)
+
+`GET /health` returns `{"ok":true}` for probes.
+
+The Docker image runs **`build/http.js`** on port **8787** by default. Use `CMD ["node", "build/index.js"]` if you need stdio in a container.
+
 ## Development
 
 Install dependencies:

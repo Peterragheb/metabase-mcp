@@ -16,12 +16,14 @@ COPY . .
 # Build the project
 RUN npm run build
 
-# Expose any ports if needed (optional)
+# Streamable HTTP MCP (remote clients, tunnels). Override CMD for stdio: node build/index.js
+EXPOSE 8787
+ENV MCP_HTTP_HOST=0.0.0.0
+ENV MCP_HTTP_PORT=8787
 
 # Set environment variables from Docker if desired (they can also be set externally)
 # ENV METABASE_URL=https://your-metabase-instance.com \
 #     METABASE_USERNAME=your_username \
 #     METABASE_PASSWORD=your_password
 
-# Use the node binary to run the built server
-CMD ["node", "build/index.js"]
+CMD ["node", "build/http.js"]
