@@ -1,6 +1,28 @@
+# Dependencies
 node_modules/
+
+# TypeScript / Node build output
 build/
+dist/
+
+# Local env files (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Wrangler / Cloudflare local secrets and dev overrides
+.dev.vars
+.dev.vars.*
+
+# Wrangler local persistence (Durable Objects, caches, KV dev) — may contain session-like data
+.wrangler/
+
+# Miniflare / Wrangler dev cache (if created outside .wrangler)
+.mf/
+
+# Logs and debug artifacts
 *.log
-.env*
-/dist
 .last-response.json
+
+# OS / editor
+.DS_Store

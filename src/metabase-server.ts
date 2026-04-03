@@ -1,6 +1,9 @@
-// 为老版本 Node.js 添加 AbortController polyfill
-import AbortController from 'abort-controller';
-global.AbortController = global.AbortController || AbortController;
+// AbortController polyfill for older Node (Workers provide it natively)
+import AbortControllerPoly from "abort-controller";
+const _g = globalThis as typeof globalThis & { AbortController?: typeof AbortController };
+if (!_g.AbortController) {
+  _g.AbortController = AbortControllerPoly as unknown as typeof AbortController;
+}
 
 /**
  * Metabase MCP 服务器
@@ -56,16 +59,33 @@ class McpError extends Error {
   }
 }
 
-// 从环境变量获取 Metabase 配置
-const METABASE_URL = process.env.METABASE_URL;
-const METABASE_USERNAME = process.env.METABASE_USERNAME;
-const METABASE_PASSWORD = process.env.METABASE_PASSWORD;
-const METABASE_API_KEY = process.env.METABASE_API_KEY;
+/** Metabase connection settings (from `process.env` in Node or Worker `env` bindings). */
+export interface MetabaseEnv {
+  METABASE_URL: string;
+  METABASE_API_KEY?: string;
+  METABASE_USERNAME?: string;
+  METABASE_PASSWORD?: string;
+}
 
-if (!METABASE_URL || (!METABASE_API_KEY && (!METABASE_USERNAME || !METABASE_PASSWORD))) {
-  throw new Error(
-    "Either (METABASE_URL and METABASE_API_KEY) or (METABASE_URL, METABASE_USERNAME, and METABASE_PASSWORD) environment variables are required"
-  );
+function metabaseEnvFromProcess(): MetabaseEnv {
+  return {
+    METABASE_URL: process.env.METABASE_URL ?? "",
+    METABASE_API_KEY: process.env.METABASE_API_KEY,
+    METABASE_USERNAME: process.env.METABASE_USERNAME,
+    METABASE_PASSWORD: process.env.METABASE_PASSWORD,
+  };
+}
+
+function validateMetabaseEnv(e: MetabaseEnv): void {
+  const url = e.METABASE_URL?.trim();
+  if (
+    !url ||
+    (!e.METABASE_API_KEY && (!e.METABASE_USERNAME || !e.METABASE_PASSWORD))
+  ) {
+    throw new Error(
+      "Either (METABASE_URL and METABASE_API_KEY) or (METABASE_URL, METABASE_USERNAME, and METABASE_PASSWORD) environment variables are required"
+    );
+  }
 }
 
 // 创建自定义 Schema 对象，使用 z.object
@@ -81,8 +101,21 @@ export class MetabaseServer {
   private server: Server;
   private axiosInstance: AxiosInstance;
   private sessionToken: string | null = null;
+  private readonly metabaseApiKey?: string;
+  private readonly metabaseUsername?: string;
+  private readonly metabasePassword?: string;
 
-  constructor() {
+  /**
+   * @param env - Optional credentials; when omitted, reads from `process.env` (Node CLI / HTTP server).
+   */
+  constructor(env?: MetabaseEnv) {
+    const e = env ?? metabaseEnvFromProcess();
+    validateMetabaseEnv(e);
+    const baseUrl = e.METABASE_URL.trim();
+    this.metabaseApiKey = e.METABASE_API_KEY;
+    this.metabaseUsername = e.METABASE_USERNAME;
+    this.metabasePassword = e.METABASE_PASSWORD;
+
     this.server = new Server(
       {
         name: "metabase-server",
@@ -97,18 +130,18 @@ export class MetabaseServer {
     );
 
     this.axiosInstance = axios.create({
-      baseURL: METABASE_URL,
+      baseURL: baseUrl,
       headers: {
         "Content-Type": "application/json",
       },
       timeout: 30000, // 30 second timeout to prevent hanging
     });
 
-    if (METABASE_API_KEY) {
+    if (this.metabaseApiKey) {
       this.logInfo('Using Metabase API Key for authentication.');
-      this.axiosInstance.defaults.headers.common['X-API-Key'] = METABASE_API_KEY;
+      this.axiosInstance.defaults.headers.common['X-API-Key'] = this.metabaseApiKey;
       this.sessionToken = "api_key_used"; // Indicate API key is in use
-    } else if (METABASE_USERNAME && METABASE_PASSWORD) {
+    } else if (this.metabaseUsername && this.metabasePassword) {
       this.logInfo('Using Metabase username/password for authentication.');
       // Existing session token logic will apply
     } else {
@@ -126,11 +159,18 @@ export class MetabaseServer {
       this.logError('Server Error', error);
     };
 
-    process.on('SIGINT', async () => {
-      this.logInfo('Shutting down server...');
-      await this.server.close();
-      process.exit(0);
-    });
+    if (typeof process !== "undefined" && typeof process.on === "function") {
+      process.on("SIGINT", async () => {
+        this.logInfo("Shutting down server...");
+        await this.server.close();
+        process.exit(0);
+      });
+    }
+  }
+
+  /** Underlying MCP SDK server (for Cloudflare `McpAgent` / custom transports). */
+  getMcpServer(): Server {
+    return this.server;
   }
 
   // Add logging utilities
@@ -182,9 +222,9 @@ export class MetabaseServer {
     // This part should only be reached if using username/password and sessionToken is null
     this.logInfo('Authenticating with Metabase using username/password...');
     try {
-      const response = await this.axiosInstance.post('/api/session', {
-        username: METABASE_USERNAME,
-        password: METABASE_PASSWORD,
+      const response = await this.axiosInstance.post("/api/session", {
+        username: this.metabaseUsername,
+        password: this.metabasePassword,
       });
 
       this.sessionToken = response.data.id;
@@ -209,7 +249,7 @@ export class MetabaseServer {
   private setupResourceHandlers() {
     this.server.setRequestHandler(ListResourcesRequestSchema, async (request) => {
       this.logInfo('Listing resources...', { requestStructure: JSON.stringify(request) });
-      if (!METABASE_API_KEY) {
+      if (!this.metabaseApiKey) {
         await this.getSessionToken();
       }
 
@@ -265,7 +305,7 @@ export class MetabaseServer {
     // 读取资源
     this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       this.logInfo('Reading resource...', { requestStructure: JSON.stringify(request) });
-      if (!METABASE_API_KEY) {
+      if (!this.metabaseApiKey) {
         await this.getSessionToken();
       }
 
@@ -845,7 +885,7 @@ export class MetabaseServer {
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       this.logInfo('Calling tool...', { requestStructure: JSON.stringify(request) });
-      if (!METABASE_API_KEY) {
+      if (!this.metabaseApiKey) {
         await this.getSessionToken();
       }
 

@@ -20,17 +20,25 @@
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
-    "start:http": "node build/http.js"
+    "start:http": "node build/http.js",
+    "dev:cf": "wrangler dev",
+    "deploy:cf": "wrangler deploy"
   },
   "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^0.4.0",
     "@modelcontextprotocol/sdk": "^1.25.2",
     "abort-controller": "^3.0.0",
-    "axios": "^1.8.2"
+    "agents": "^0.9.0",
+    "axios": "^1.8.2",
+    "hono": "^4.12.10",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260403.1",
     "@types/axios": "^0.14.4",
     "@types/express": "^5.0.0",
     "@types/node": "^20.17.22",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "wrangler": "^4.80.0"
   }
 }

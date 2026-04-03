@@ -3,14 +3,23 @@
  * Saves full JSON responses for inspection and debugging
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+/** Node-only debug log path; Workers bundles omit `import.meta.url`, so skip file logging there. */
+function getResponseLogPath(): string | null {
+  const url = import.meta.url;
+  if (typeof url !== "string" || url.length === 0) return null;
+  try {
+    const filename = fileURLToPath(url);
+    return path.join(path.dirname(filename), "..", ".last-response.json");
+  } catch {
+    return null;
+  }
+}
 
-const RESPONSE_LOG_PATH = path.join(__dirname, '..', '.last-response.json');
+const RESPONSE_LOG_PATH = getResponseLogPath();
 
 interface LoggedResponse {
   timestamp: string;
@@ -28,6 +37,9 @@ export async function logResponse(
   requestParams: any,
   responseData: any
 ): Promise<void> {
+  if (!RESPONSE_LOG_PATH) {
+    return;
+  }
   try {
     const logEntry: LoggedResponse = {
       timestamp: new Date().toISOString(),

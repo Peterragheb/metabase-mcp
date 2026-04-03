@@ -11,5 +11,12 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "src/worker.ts",
+    "src/google-handler.ts",
+    "src/cloudflare-bindings.ts",
+    "src/oauth-upstream-utils.ts",
+    "src/workers-oauth-utils.ts"
+  ]
 }

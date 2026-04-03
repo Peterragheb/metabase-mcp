@@ -1,0 +1,41 @@
+/**
+ * Remote MCP on Cloudflare Workers (Streamable HTTP + Durable Objects + Google OAuth).
+ * @see https://developers.cloudflare.com/agents/guides/remote-mcp-server/
+ *
+ * Secrets (wrangler secret put):
+ *   METABASE_URL, METABASE_API_KEY (or METABASE_USERNAME + METABASE_PASSWORD),
+ *   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, COOKIE_ENCRYPTION_KEY (e.g. openssl rand -hex 32)
+ *
+ * KV: run `npx wrangler kv namespace create OAUTH_KV` and paste the id below.
+ * Optional var: GOOGLE_ALLOWED_EMAILS=comma@separated.com
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "metabase-mcp",
+  "main": "src/worker.ts",
+  "compatibility_date": "2025-03-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      "id": "d524f0fb08a44f948ef102312a970834"
+    }
+  ],
+  "migrations": [
+    {
+      "new_sqlite_classes": ["MetabaseMcp"],
+      "tag": "v1"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "MetabaseMcp",
+        "name": "MCP_OBJECT"
+      }
+    ]
+  },
+  "observability": {
+    "enabled": true
+  }
+}
